@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import BottomNav from "@/components/BottomNav";
+import JoinGate from "@/components/JoinGate";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -36,6 +37,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         {/* viewportFit "cover" + a translucent status bar: keep content out from under the notch. */}
         <main className="mx-auto w-full max-w-md pt-[env(safe-area-inset-top)] pb-nav">{children}</main>
         <BottomNav />
+        <JoinGate />
       </body>
     </html>
   );

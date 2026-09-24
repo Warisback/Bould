@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import SaveToProfile from "@/components/save/SaveToProfile";
 import { isSampleReview } from "@/lib/storage";
 import { useLastReview } from "@/lib/useLastReview";
 import PageHeader from "./PageHeader";
@@ -58,6 +59,7 @@ export default function LastReviewView() {
     <ReviewScreen
       review={last.review}
       subtitle={sample ? "Sample climb · no video needed" : `Your climb from ${when}`}
+      footer={<SaveToProfile review={last.review} defaultGrade={sample ? 4 : undefined} />}
       banner={
         sample ? null : (
           <p className="px-1 text-sm leading-relaxed text-muted">
