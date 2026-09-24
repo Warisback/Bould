@@ -9,8 +9,8 @@ export function ReviewedBanner({ frames }: { frames: number }) {
         </svg>
       </span>
       <p className="text-sm leading-snug text-muted">
-        <span className="font-semibold text-ink">Your climb, reviewed</span> from {frames} moments in your video. Tap a
-        dot to jump to any move.
+        <span className="font-semibold text-ink">Your climb, reviewed</span>
+        {frames > 0 ? ` from ${frames} moments in your video` : ""}. Tap a dot to jump to any move.
       </p>
     </div>
   );

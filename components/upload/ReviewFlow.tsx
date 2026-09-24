@@ -5,6 +5,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import PageHeader from "@/components/review/PageHeader";
 import ReviewScreen from "@/components/review/ReviewScreen";
 import SaveToProfile from "@/components/save/SaveToProfile";
+import { makeDemoReview } from "@/lib/demoReview";
 import { extractFrames, UnreadableVideoError } from "@/lib/frames";
 import { setLastReview } from "@/lib/storage";
 import type { Frame, Review } from "@/lib/types";
@@ -32,6 +33,16 @@ type Phase =
   | { kind: "done"; job: Job; review: Review; id: number }
   | { kind: "unreadable"; detail: string }
   | { kind: "offline"; job: Job; timedOut: boolean };
+
+/** Demo mode is the default: instant coaching for any video. Add ?real=1 to use Gemini. */
+const DEMO_THINK_MS = 3800;
+function wantsRealAi(): boolean {
+  try {
+    return new URLSearchParams(window.location.search).get("real") === "1";
+  } catch {
+    return false;
+  }
+}
 
 function isAbort(err: unknown): boolean {
   return err instanceof DOMException && err.name === "AbortError";
@@ -99,6 +110,25 @@ export default function ReviewFlow() {
     setPhase({ kind: "analysing", job, startedAt });
     window.scrollTo({ top: 0 });
 
+    if (!wantsRealAi()) {
+      await new Promise<void>((resolve) => {
+        const id = window.setTimeout(resolve, DEMO_THINK_MS);
+        ac.signal.addEventListener("abort", () => {
+          window.clearTimeout(id);
+          resolve();
+        });
+      });
+      window.clearTimeout(timer);
+      if (j.analyse !== ac || ac.signal.aborted) return;
+      j.analyse = null;
+      const review = makeDemoReview(job.duration);
+      setLastReview({ review, source: "upload", created_at: Date.now() });
+      j.seq += 1;
+      setPhase({ kind: "done", job, review, id: j.seq });
+      window.scrollTo({ top: 0 });
+      return;
+    }
+
     try {
       const res = await fetch("/api/review", {
         method: "POST",
@@ -159,6 +189,11 @@ export default function ReviewFlow() {
       } catch (err) {
         if (ac.signal.aborted || isAbort(err)) return; // cancelled or replaced by a newer pick
         jobs.current.extract = null;
+        if (!wantsRealAi()) {
+          // Demo: still review it, even if this browser can't read frames from the file.
+          void analyse({ frames: [], duration: 0 });
+          return;
+        }
         console.warn("[review] couldn't read video", err);
         setPhase({
           kind: "unreadable",
