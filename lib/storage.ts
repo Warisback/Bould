@@ -38,16 +38,46 @@ export function setUserId(id: string | null) {
   safeSet(USER_KEY, id);
 }
 
+const LAST_REVIEW_EVENT = "br:last-review";
+
+// Memoised by the raw string so repeated reads return the same object
+// (required for useSyncExternalStore snapshots).
+let lastRaw: string | null | undefined;
+let lastParsed: CachedReview | null = null;
+
 export function getLastReview(): CachedReview | null {
   const raw = safeGet(LAST_REVIEW_KEY);
-  if (!raw) return null;
-  try {
-    return JSON.parse(raw) as CachedReview;
-  } catch {
-    return null;
+  if (raw === lastRaw) return lastParsed;
+  lastRaw = raw;
+  lastParsed = null;
+  if (raw) {
+    try {
+      lastParsed = JSON.parse(raw) as CachedReview;
+    } catch {
+      lastParsed = null;
+    }
   }
+  return lastParsed;
 }
 
 export function setLastReview(value: CachedReview | null) {
   safeSet(LAST_REVIEW_KEY, value ? JSON.stringify(value) : null);
+  try {
+    window.dispatchEvent(new Event(LAST_REVIEW_EVENT));
+  } catch {
+    // no window (should not happen in a client effect)
+  }
+}
+
+/** Notifies on changes from this tab (setLastReview) and other tabs (storage event). */
+export function subscribeLastReview(onChange: () => void): () => void {
+  const onStorage = (e: StorageEvent) => {
+    if (e.key === null || e.key === LAST_REVIEW_KEY) onChange();
+  };
+  window.addEventListener(LAST_REVIEW_EVENT, onChange);
+  window.addEventListener("storage", onStorage);
+  return () => {
+    window.removeEventListener(LAST_REVIEW_EVENT, onChange);
+    window.removeEventListener("storage", onStorage);
+  };
 }

@@ -1,0 +1,92 @@
+{
+  "sent": false,
+  "accuracy": 63.8,
+  "summary": "A clean, confident lower half. The drop-knee to the pinch was the move of the climb. It came apart once the wall steepened: you started pulling with bent arms, hung under the crux for over three seconds, then let go of the heel and jumped. You have the strength for this. The crux is a body-position and commitment problem, not a power one.",
+  "crux": {
+    "t": 21.6,
+    "what_went_wrong": "You let go of the right heel hook to jump for the crimp rail. With the heel gone and only a left-toe smear on the wall, nothing held your hips in, so they swung out and your feet cut the moment your hand hit the rail. The three seconds you spent hesitating just below had already drained your forearms, so you couldn't hold the swing.",
+    "try_this": "Keep the heel. Set it higher, on the lip of the volume, with your toes flexed up towards your shin. Drag the heel towards your bum like a third hand to pull your hips into the wall, then rise up to the rail on a straight left arm, fully static. Rehearse the sequence from the ground so you climb from the undercling straight through without stopping."
+  },
+  "moves": [
+    {
+      "t": 0.6,
+      "move": "Sit start: match the low jug, toes on the two kick-board edges",
+      "rating": "good",
+      "why": "Solid, standard start. Both toes are placed precisely on the edges and your arms are straight, so you're hanging off your skeleton rather than your biceps before the first pull.",
+      "better": null,
+      "send_chance": 71
+    },
+    {
+      "t": 2.5,
+      "move": "Left toe high onto the blue foot chip, stand up into the right sidepull",
+      "rating": "great",
+      "why": "Textbook. You turned your left hip into the wall as you rocked over the high foot and pushed with the leg instead of pulling with the arms. Quiet foot: it went on once and stayed there.",
+      "better": null,
+      "send_chance": 75
+    },
+    {
+      "t": 4.9,
+      "move": "Right drop-knee to reach the pinch statically",
+      "rating": "brilliant",
+      "why": "The move of the climb. Most people slap for the pinch square-on. You dropped the right knee, which locked your hips against the wall and took the weight off your fingers, and reached the pinch fully static. That saves real energy for the top.",
+      "better": null,
+      "send_chance": 83
+    },
+    {
+      "t": 7.2,
+      "move": "Match the pinch and walk your feet up to the volume",
+      "rating": "good",
+      "why": "Efficient match, and you moved your feet before your hands, which is the right order. There's a slight scrape on the second foot placement, but you didn't lose any weight off it.",
+      "better": null,
+      "send_chance": 81
+    },
+    {
+      "t": 9.4,
+      "move": "Left hand cross to the undercling, flag the right leg",
+      "rating": "good",
+      "why": "Good use of a flag to stop the barn-door swing, and your arm stayed long while you set the undercling. Send chance dips slightly only because the wall steepens from here.",
+      "better": null,
+      "send_chance": 78
+    },
+    {
+      "t": 11.8,
+      "move": "Bent-arm slap to the sloper; hips sag away from the wall",
+      "rating": "inaccuracy",
+      "why": "You pulled the sloper in with a locked-off left arm and your hips drifted about a foot off the wall. Slopers need your body weight hanging underneath them, not strength. With your hips out, you had to squeeze harder, and that cost you forearm.",
+      "better": "Straighten the left arm and sink your hips low and in, directly under the sloper, before you commit weight to it. Think 'hang and drop', not 'pull and grab'.",
+      "send_chance": 67
+    },
+    {
+      "t": 13.9,
+      "move": "Right toe smear on the volume face",
+      "rating": "good",
+      "why": "Nice precise smear: heel dropped low, lots of rubber on the volume, and you weighted it straight away. That won back some balance after the sloper.",
+      "better": null,
+      "send_chance": 66
+    },
+    {
+      "t": 15.6,
+      "move": "Hesitate under the crux: re-chalk twice and shuffle your feet (3+ seconds)",
+      "rating": "mistake",
+      "why": "You stopped on the steepest part of the wall, on a bent arm, to re-read the sequence. Every second here drains forearm, and the two foot shuffles put you back exactly where you started. This is where the send slipped away, before the crux had even begun.",
+      "better": "Read the crux from the ground and rehearse it before you pull on. If you need a pause, take it back at the undercling on a straight arm, then climb through the crux without stopping.",
+      "send_chance": 51
+    },
+    {
+      "t": 19.3,
+      "move": "Set a right heel hook on the volume, too low, with the toe pointing down",
+      "rating": "inaccuracy",
+      "why": "The heel was the right idea, but it landed on the flat of the volume instead of the lip, with your toe pointing down, so it couldn't pull. It looked set, but it wasn't doing any work.",
+      "better": "Place the heel higher on the lip and flex your toes up towards your shin, then actively drag the heel in to pull your hips to the wall before you reach.",
+      "send_chance": 44
+    },
+    {
+      "t": 21.6,
+      "move": "Release the heel and jump for the crimp rail; feet cut and you swing off",
+      "rating": "blunder",
+      "why": "Pumped from hesitating, you let go of the heel and went dynamic. Nothing was holding your hips in, so the moment your hand caught the rail your feet cut, your body swung out, and the swing ripped you off the wall.",
+      "better": "Keep the heel on and go static: pull with the heel, keep the left arm straight and rise to the rail with your hips close to the wall. If it has to be dynamic, keep the left toe on the smear and deadpoint, catching the rail at the top of the movement while you're weightless.",
+      "send_chance": 8
+    }
+  ]
+}
