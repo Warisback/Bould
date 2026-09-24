@@ -1,0 +1,70 @@
+@import "tailwindcss";
+
+/*
+ * Dark, Strava-style. Brand orange is for actions and nav only;
+ * the move-rating colours are the only other bright colours.
+ */
+@theme {
+  --color-bg: #0b0b0c;
+  --color-surface: #18181a;
+  --color-surface-2: #222225;
+  --color-line: #2c2c30;
+  --color-ink: #f4f4f5;
+  --color-muted: #9b9ba3;
+  --color-faint: #5d5d65;
+
+  --color-brand: #fc4c02;
+  --color-brand-deep: #3a1606;
+
+  --color-brilliant: #1fc7b6;
+  --color-great: #4f9ef0;
+  --color-good: #7cc04b;
+  --color-inaccuracy: #f5c542;
+  --color-mistake: #f28a2e;
+  --color-blunder: #ec4b4b;
+
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
+
+  --animate-live-pulse: live-pulse 1.6s ease-out infinite;
+  --animate-pop-in: pop-in 0.5s cubic-bezier(0.2, 1.4, 0.4, 1) both;
+  --animate-fade-up: fade-up 0.35s ease-out both;
+
+  @keyframes live-pulse {
+    0% { box-shadow: 0 0 0 0 rgb(252 76 2 / 0.7); }
+    70% { box-shadow: 0 0 0 8px rgb(252 76 2 / 0); }
+    100% { box-shadow: 0 0 0 0 rgb(252 76 2 / 0); }
+  }
+  @keyframes pop-in {
+    0% { transform: scale(0.4); opacity: 0; }
+    100% { transform: scale(1); opacity: 1; }
+  }
+  @keyframes fade-up {
+    0% { transform: translateY(8px); opacity: 0; }
+    100% { transform: translateY(0); opacity: 1; }
+  }
+}
+
+html,
+body {
+  background: var(--color-bg);
+  color: var(--color-ink);
+}
+
+body {
+  font-family: var(--font-sans);
+  -webkit-tap-highlight-color: transparent;
+  overscroll-behavior-y: none;
+}
+
+/* Space for the fixed bottom tab bar + iOS home indicator. */
+.pb-nav {
+  padding-bottom: calc(96px + env(safe-area-inset-bottom));
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  scrollbar-width: none;
+}
