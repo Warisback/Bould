@@ -3,8 +3,10 @@
 import { memo, useEffect, useRef } from "react";
 import { RATING_META } from "@/lib/ratings";
 import type { Move } from "@/lib/types";
+import { BetterTip } from "./CoachPanel";
 import { clampPercent, formatTime } from "./format";
 import RatingBadge from "./RatingBadge";
+import { isFullyVisible, visibleArea } from "./viewport";
 
 function MoveList({
   moves,
@@ -12,28 +14,34 @@ function MoveList({
   expanded,
   playing,
   onRowTap,
+  onWatch,
 }: {
   moves: readonly Move[];
   currentIndex: number;
   expanded: number | null;
   playing: boolean;
   onRowTap: (index: number) => void;
+  /** replay the stage from just before this move */
+  onWatch: (index: number) => void;
 }) {
   const listRef = useRef<HTMLOListElement>(null);
   const prev = useRef({ index: currentIndex, playing });
 
   // Follow playback, but only as it advances naturally (not after a seek, which
-  // may have its own scroll in flight) and only when the list is already on
-  // screen, so the page never yanks you away from the video.
+  // may have its own scroll in flight) and only while the climber is reading
+  // the list: the row that was current must be fully in view above the nav.
+  // Otherwise the page would yank them away from the stage.
   useEffect(() => {
     const was = prev.current;
     prev.current = { index: currentIndex, playing };
     if (!playing || !was.playing || currentIndex !== was.index + 1) return;
-    const list = listRef.current;
-    const row = list?.children[currentIndex] as HTMLElement | undefined;
-    if (!list || !row) return;
-    const rect = list.getBoundingClientRect();
-    if (rect.bottom < 0 || rect.top > window.innerHeight) return;
+    const rows = listRef.current?.children;
+    const before = rows?.[was.index] as HTMLElement | undefined;
+    const row = rows?.[currentIndex] as HTMLElement | undefined;
+    if (!before || !row || !isFullyVisible(before)) return;
+    const r = row.getBoundingClientRect();
+    const { top, bottom } = visibleArea();
+    if (r.top >= top && r.bottom <= bottom) return;
     row.scrollIntoView({ block: "nearest", behavior: "smooth" });
   }, [currentIndex, playing]);
 
@@ -51,7 +59,7 @@ function MoveList({
           return (
             <li
               key={i}
-              className={`relative scroll-mb-28 scroll-mt-4 transition-colors duration-300 ${current ? "bg-surface-2" : ""}`}
+              className={`relative scroll-mt-[calc(env(safe-area-inset-top)_+_1rem)] scroll-mb-[calc(7.5rem_+_env(safe-area-inset-bottom))] transition-colors duration-300 ${current ? "bg-surface-2" : ""}`}
             >
               <span
                 className={`absolute inset-y-2 left-0 w-[3px] rounded-r-full transition-opacity duration-300 ${meta.bg} ${
@@ -65,7 +73,7 @@ function MoveList({
                 className="flex w-full items-center gap-3 px-4 py-3 text-left active:bg-surface-2"
               >
                 <span className="flex w-8 shrink-0 flex-col items-start leading-tight tabular-nums">
-                  <span className="text-[11px] font-semibold text-faint">{i + 1}</span>
+                  <span className="text-[11px] font-semibold text-muted">{i + 1}</span>
                   <span className="font-mono text-xs text-muted">{formatTime(m.t)}</span>
                 </span>
                 <RatingBadge rating={m.rating} />
@@ -95,12 +103,17 @@ function MoveList({
                     </span>
                   </div>
                   <p className="mt-2 text-sm leading-relaxed text-ink/80">{m.why}</p>
-                  {m.better && (
-                    <div className="mt-3 rounded-xl border-l-2 border-great bg-great/10 px-3 py-2.5 text-sm leading-relaxed">
-                      <span className="font-semibold text-great">Better: </span>
-                      <span className="text-ink/90">{m.better}</span>
-                    </div>
-                  )}
+                  {m.better && <BetterTip text={m.better} />}
+                  <button
+                    type="button"
+                    onClick={() => onWatch(i)}
+                    className="mt-3 flex h-11 w-full items-center justify-center gap-2 rounded-full border-2 border-brand text-sm font-semibold text-brand transition active:scale-[0.98] active:bg-brand/10"
+                  >
+                    <svg viewBox="0 0 24 24" className="h-4 w-4" fill="currentColor" aria-hidden>
+                      <path d="M8 5.5v13a1 1 0 0 0 1.5.86l10.5-6.5a1 1 0 0 0 0-1.72L9.5 4.64A1 1 0 0 0 8 5.5Z" />
+                    </svg>
+                    Watch this move
+                  </button>
                 </div>
               )}
             </li>

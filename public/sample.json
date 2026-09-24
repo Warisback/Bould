@@ -34,7 +34,7 @@
     },
     {
       "t": 7.2,
-      "move": "Match the pinch and walk your feet up to the volume",
+      "move": "Walk your feet up to the volume, then match the pinch",
       "rating": "good",
       "why": "Efficient match, and you moved your feet before your hands, which is the right order. There's a slight scrape on the second foot placement, but you didn't lose any weight off it.",
       "better": null,
@@ -58,11 +58,11 @@
     },
     {
       "t": 13.9,
-      "move": "Right toe smear on the volume face",
+      "move": "Left toe smear on the volume face",
       "rating": "good",
       "why": "Nice precise smear: heel dropped low, lots of rubber on the volume, and you weighted it straight away. That won back some balance after the sloper.",
       "better": null,
-      "send_chance": 66
+      "send_chance": 70
     },
     {
       "t": 15.6,
@@ -86,7 +86,7 @@
       "rating": "blunder",
       "why": "Pumped from hesitating, you let go of the heel and went dynamic. Nothing was holding your hips in, so the moment your hand caught the rail your feet cut, your body swung out, and the swing ripped you off the wall.",
       "better": "Keep the heel on and go static: pull with the heel, keep the left arm straight and rise to the rail with your hips close to the wall. If it has to be dynamic, keep the left toe on the smear and deadpoint, catching the rail at the top of the movement while you're weightless.",
-      "send_chance": 8
+      "send_chance": 1
     }
   ]
 }

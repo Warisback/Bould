@@ -1,5 +1,6 @@
 "use client";
 
+import { normalizeReview } from "./review";
 import type { Review } from "./types";
 
 const USER_KEY = "br:user_id";
@@ -52,12 +53,32 @@ export function getLastReview(): CachedReview | null {
   lastParsed = null;
   if (raw) {
     try {
-      lastParsed = JSON.parse(raw) as CachedReview;
+      lastParsed = parseCached(JSON.parse(raw));
     } catch {
       lastParsed = null;
     }
   }
   return lastParsed;
+}
+
+/** Validates a cached value so bad data from an older build can never reach render. */
+function parseCached(raw: unknown): CachedReview | null {
+  if (typeof raw !== "object" || raw === null) return null;
+  const c = raw as Record<string, unknown>;
+  const review = normalizeReview(c.review);
+  if (!review) return null;
+  const cached: CachedReview = {
+    review,
+    source: c.source === "sample" ? "sample" : "upload",
+    created_at: typeof c.created_at === "number" && Number.isFinite(c.created_at) ? c.created_at : Date.now(),
+  };
+  if (typeof c.saved_climb_id === "string") cached.saved_climb_id = c.saved_climb_id;
+  return cached;
+}
+
+/** A cached review that is really the canned sample: picked by the climber, or returned after an upload error. */
+export function isSampleReview(cached: CachedReview): boolean {
+  return cached.source === "sample" || cached.review.fallback === true;
 }
 
 export function setLastReview(value: CachedReview | null) {

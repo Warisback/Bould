@@ -1,9 +1,11 @@
 "use client";
 
 import Link from "next/link";
+import { isSampleReview } from "@/lib/storage";
 import { useLastReview } from "@/lib/useLastReview";
 import PageHeader from "./PageHeader";
 import ReviewScreen from "./ReviewScreen";
+import { DEFAULT_ASPECT, stageBoxStyle } from "./stage";
 
 export default function LastReviewView() {
   const last = useLastReview();
@@ -13,15 +15,15 @@ export default function LastReviewView() {
     return (
       <div className="px-4" aria-busy>
         <PageHeader title="Climb review" />
-        <div className="mt-4 flex gap-2">
-          <div className="w-3 rounded-full bg-surface" />
-          <div className="aspect-[3/4] max-h-[55svh] flex-1 animate-pulse rounded-2xl bg-surface" />
+        <div className="mt-4 flex justify-center gap-2">
+          <div className="w-6 shrink-0 rounded-full bg-surface" />
+          <div className="shrink-0 animate-pulse rounded-2xl bg-surface" style={stageBoxStyle(DEFAULT_ASPECT)} />
         </div>
       </div>
     );
   }
 
-  if (!last || !Array.isArray(last.review?.moves)) {
+  if (!last) {
     return (
       <div className="px-4">
         <PageHeader title="Last review" />
@@ -50,22 +52,18 @@ export default function LastReviewView() {
   }
 
   const when = new Date(last.created_at).toLocaleDateString(undefined, { day: "numeric", month: "short" });
+  // ReviewScreen flags a fallback (the sample shown after an upload error) itself.
+  const sample = isSampleReview(last);
   return (
     <ReviewScreen
       review={last.review}
+      subtitle={sample ? "Sample climb · no video needed" : `Your climb from ${when}`}
       banner={
-        <div className="rounded-2xl bg-surface px-4 py-3 text-sm text-muted">
-          {last.source === "sample" ? (
-            <>
-              <span className="font-semibold text-ink">Sample climb</span> — no video needed.
-            </>
-          ) : (
-            <>
-              <span className="font-semibold text-ink">Your climb from {when}.</span> Videos stay on your phone only
-              while you review them, so this is a virtual replay.
-            </>
-          )}
-        </div>
+        sample ? null : (
+          <p className="px-1 text-sm leading-relaxed text-muted">
+            Videos stay on your phone only while you review them, so this is a virtual replay of your moves.
+          </p>
+        )
       }
     />
   );

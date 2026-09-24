@@ -174,12 +174,14 @@ function VirtualStage({
     .concat(`${r1(marker.x)},${r1(marker.y)}`)
     .join(" ");
   const current = currentIndex >= 0 ? holds[currentIndex] : null;
+  const onMat = currentIndex < 0 ? holds[0] : holds[holds.length - 1];
+  const labelRight = !onMat || onMat.x < W / 2;
   const currentColour = currentIndex >= 0 ? RATING_META[moves[currentIndex].rating].color : "";
 
   return (
     <svg
       viewBox={`0 0 ${W} ${H}`}
-      preserveAspectRatio="xMidYMid slice"
+      preserveAspectRatio="xMidYMid meet"
       className="absolute inset-0 h-full w-full"
       aria-hidden
     >
@@ -231,6 +233,20 @@ function VirtualStage({
 
       <circle cx={marker.x} cy={marker.y} r="15" fill="#fff" fillOpacity="0.1" />
       <circle cx={marker.x} cy={marker.y} r="6.5" fill="#fff" stroke="#0b0b0c" strokeWidth="1.5" />
+
+      {/* On the mat, on the side away from where the marker stands (start) or lands (fall). */}
+      <text
+        x={labelRight ? W - 9 : 9}
+        y={H - 8}
+        textAnchor={labelRight ? "end" : "start"}
+        fontSize="8"
+        fontWeight="600"
+        letterSpacing="1.4"
+        fill="#fff"
+        fillOpacity="0.35"
+      >
+        VIRTUAL REPLAY
+      </text>
     </svg>
   );
 }

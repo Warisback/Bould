@@ -4,6 +4,7 @@ import Link from "next/link";
 import { formatAccuracy, formatTime } from "@/components/review/format";
 import { ResultPill } from "@/components/review/SummaryCard";
 import { RATING_META } from "@/lib/ratings";
+import { isSampleReview } from "@/lib/storage";
 import { useLastReview } from "@/lib/useLastReview";
 
 function Stat({ label, children }: { label: string; children: React.ReactNode }) {
@@ -18,11 +19,11 @@ function Stat({ label, children }: { label: string; children: React.ReactNode })
 /** Strava-style activity card for the review cached on this phone. */
 export default function LastReviewCard() {
   const last = useLastReview();
-  if (!last || !Array.isArray(last.review?.moves)) return null;
+  if (!last) return null;
 
   const { review } = last;
   const moves = [...review.moves].sort((a, b) => a.t - b.t);
-  const title = last.source === "sample" ? "Sample climb" : "Your climb";
+  const title = isSampleReview(last) ? "Sample climb" : "Your climb";
   const when = new Date(last.created_at).toLocaleDateString(undefined, { day: "numeric", month: "short" });
   const lastT = moves.length ? moves[moves.length - 1].t : 0;
   const crux = !review.sent && review.crux ? review.crux : null;
@@ -34,7 +35,7 @@ export default function LastReviewCard() {
     >
       <div className="flex items-center justify-between gap-3">
         <p className="text-xs font-semibold uppercase tracking-wider text-muted">Last review</p>
-        <p className="text-xs text-faint">{when}</p>
+        <p className="text-xs text-muted">{when}</p>
       </div>
       <div className="mt-1.5 flex items-center justify-between gap-3">
         <p className="text-xl font-bold">{title}</p>

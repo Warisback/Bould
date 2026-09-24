@@ -1,28 +1,36 @@
 "use client";
 
-import { useCallback, useMemo, useRef, useState, type ReactNode } from "react";
-import { RATING_META } from "@/lib/ratings";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { RATINGS, type MoveRating, type Review } from "@/lib/types";
+import { RATING_META } from "@/lib/ratings";
+import CoachPanel from "./CoachPanel";
 import CruxCard from "./CruxCard";
 import { clampPercent, formatTime, moveIndexAt } from "./format";
 import MoveList from "./MoveList";
 import PageHeader from "./PageHeader";
 import RatingBadge from "./RatingBadge";
 import SendBar from "./SendBar";
+import { DEFAULT_ASPECT, stageBoxStyle } from "./stage";
 import SummaryCard from "./SummaryCard";
 import Timeline from "./Timeline";
 import { usePlayback } from "./usePlayback";
 import VirtualStage from "./VirtualStage";
+import { afterScroll, isFullyVisible } from "./viewport";
 
 export interface ReviewScreenProps {
   review: Review;
   videoUrl?: string | null;
   footer?: ReactNode;
+  /** one line under the title, e.g. "Sample climb · a V4 fall at Aldgate" */
+  subtitle?: ReactNode;
+  /** a longer note, shown below the replay so it never pushes the controls under the nav */
   banner?: ReactNode;
 }
 
-/** Aspect used for the virtual stage, and for a video until its metadata loads. */
-const DEFAULT_ASPECT = 3 / 4;
+/** "Watch" starts at the previous move when it is at most this many seconds back... */
+const LEAD_MAX = 3;
+/** ...otherwise this long before the move. */
+const LEAD_IN = 2.5;
 
 function PlayIcon({ className }: { className?: string }) {
   return (
@@ -58,62 +66,120 @@ function Chevron({ dir }: { dir: "left" | "right" }) {
   );
 }
 
-export default function ReviewScreen({ review, videoUrl, footer, banner }: ReviewScreenProps) {
-  const moves = useMemo(() => [...review.moves].sort((a, b) => a.t - b.t), [review.moves]);
+export default function ReviewScreen({ review, videoUrl, footer, subtitle, banner }: ReviewScreenProps) {
+  const sorted = useMemo(() => [...review.moves].sort((a, b) => a.t - b.t), [review.moves]);
   const counts = useMemo(() => {
     const c = Object.fromEntries(RATINGS.map((r) => [r, 0])) as Record<MoveRating, number>;
-    for (const m of moves) c[m.rating] += 1;
+    for (const m of sorted) c[m.rating] += 1;
     return c;
-  }, [moves]);
+  }, [sorted]);
 
   const hasVideo = Boolean(videoUrl);
   // iOS Safari only paints a first frame when asked for a time offset.
   const src = videoUrl && !videoUrl.includes("#") ? `${videoUrl}#t=0.001` : videoUrl ?? undefined;
-  const lastT = moves.length ? moves[moves.length - 1].t : 0;
+  const lastT = sorted.length ? sorted[sorted.length - 1].t : 0;
+  const crux = !review.sent ? review.crux : null;
   const { currentTime, duration, playing, seek, play, pause, toggle, aspect, videoProps } = usePlayback({
     hasVideo,
-    fallbackDuration: Math.max(lastT + 2, 3),
+    // The crux can come after the last rated move (the fall itself).
+    fallbackDuration: Math.max(lastT, crux?.t ?? 0, 1) + 2,
   });
+
+  // With a real video, the model's timestamps can run past the end of the clip.
+  // Squeeze them into it so every move stays reachable and in order.
+  const timeScale = hasVideo && lastT > 0 && lastT > duration - 0.1 ? Math.max(0, duration - 0.1) / lastT : 1;
+  const moves = useMemo(
+    () => (timeScale === 1 ? sorted : sorted.map((m) => ({ ...m, t: m.t * timeScale }))),
+    [sorted, timeScale],
+  );
 
   const currentIndex = moveIndexAt(moves, currentTime);
   const current = currentIndex >= 0 ? moves[currentIndex] : null;
   const sendChance = clampPercent(current?.send_chance ?? moves[0]?.send_chance ?? 50);
 
   const [expanded, setExpanded] = useState<number | null>(null);
+  // The coach shows the move on the stage; a selected move wins when it is the
+  // one at the playhead (e.g. two moves share a timestamp).
+  const coachIndex =
+    expanded !== null && moves[expanded] && moveIndexAt(moves, moves[expanded].t) === currentIndex
+      ? expanded
+      : currentIndex;
+
   const stageRef = useRef<HTMLDivElement>(null);
+  /** cancels a "watch" that is waiting for its scroll to finish */
+  const pendingWatch = useRef<(() => void) | null>(null);
+  const cancelPendingWatch = useCallback(() => {
+    pendingWatch.current?.();
+    pendingWatch.current = null;
+  }, []);
+  useEffect(() => cancelPendingWatch, [cancelPendingWatch]);
 
   const selectMove = useCallback(
     (i: number) => {
       const m = moves[i];
       if (!m) return;
+      cancelPendingWatch();
       seek(m.t);
       setExpanded(i);
     },
-    [moves, seek],
+    [moves, seek, cancelPendingWatch],
   );
 
   const tapRow = useCallback(
     (i: number) => {
       const m = moves[i];
       if (!m) return;
+      cancelPendingWatch();
       seek(m.t);
       setExpanded((e) => (e === i ? null : i));
     },
-    [moves, seek],
+    [moves, seek, cancelPendingWatch],
   );
 
-  const crux = !review.sent ? review.crux : null;
-  const cruxT = crux?.t;
+  /**
+   * Replay a move from a little before it: bring the stage into view, then play
+   * once the scroll has settled so the move isn't over before it can be seen.
+   */
+  const watchMove = useCallback(
+    (i: number) => {
+      const m = moves[i];
+      if (!m) return;
+      cancelPendingWatch();
+      pause();
+      const prevT = i > 0 ? moves[i - 1].t : 0;
+      const leadIn = m.t - prevT <= LEAD_MAX ? prevT : m.t - LEAD_IN;
+      // Never start inside the end window, where play() would rewind to 0:00.
+      seek(Math.max(0, Math.min(leadIn, duration - 1.5)));
+      setExpanded(i);
+      const stage = stageRef.current;
+      if (!stage || isFullyVisible(stage)) {
+        play();
+        return;
+      }
+      stage.scrollIntoView({ behavior: "smooth", block: "start" });
+      pendingWatch.current = afterScroll(() => {
+        pendingWatch.current = null;
+        play();
+      });
+    },
+    [moves, duration, seek, play, pause, cancelPendingWatch],
+  );
+
+  const cruxT = crux ? crux.t * timeScale : undefined;
   const watchCrux = useCallback(() => {
-    if (cruxT === undefined) return;
-    const i = moves.findIndex((m) => Math.abs(m.t - cruxT) < 0.05);
-    seek(cruxT);
-    if (i >= 0) setExpanded(i);
-    stageRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-    play();
-  }, [cruxT, moves, seek, play]);
+    if (cruxT === undefined || moves.length === 0) return;
+    // The move nearest the crux, so the seek, the highlight and the open row agree.
+    const i = moves.reduce((best, m, k) => (Math.abs(m.t - cruxT) < Math.abs(moves[best].t - cruxT) ? k : best), 0);
+    watchMove(i);
+  }, [cruxT, moves, watchMove]);
+
+  const togglePlay = () => {
+    cancelPendingWatch();
+    toggle();
+  };
 
   const stepPrev = () => {
+    cancelPendingWatch();
     pause();
     if (currentIndex < 0) return seek(0);
     if (currentTime - moves[currentIndex].t > 0.75) return selectMove(currentIndex);
@@ -123,31 +189,27 @@ export default function ReviewScreen({ review, videoUrl, footer, banner }: Revie
   };
 
   const stepNext = () => {
+    cancelPendingWatch();
     pause();
     if (currentIndex < moves.length - 1) selectMove(currentIndex + 1);
   };
 
-  const notice =
-    banner ??
-    (review.fallback ? (
-      <div className="rounded-2xl bg-inaccuracy/10 px-4 py-3 text-sm text-inaccuracy">
-        We couldn&apos;t analyse that video, so this is a sample review.
-      </div>
-    ) : null);
-
   return (
     <div className="space-y-4 px-4 pb-6">
-      <PageHeader title="Climb review" />
-
-      {notice}
+      <PageHeader
+        title="Climb review"
+        subtitle={
+          review.fallback ? <span className="text-inaccuracy">Sample review · we couldn&apos;t analyse your video</span> : subtitle
+        }
+      />
 
       <div className="space-y-2">
-        <div ref={stageRef} className="flex scroll-mt-3 items-stretch gap-2">
+        <div ref={stageRef} className="flex scroll-mt-[calc(env(safe-area-inset-top)_+_12px)] justify-center gap-2">
           <SendBar chance={sendChance} />
 
           <div
-            className="relative max-h-[55svh] min-w-0 flex-1 overflow-hidden rounded-2xl bg-black ring-1 ring-line"
-            style={{ aspectRatio: aspect ?? DEFAULT_ASPECT }}
+            className="relative shrink-0 overflow-hidden rounded-2xl bg-black ring-1 ring-line"
+            style={stageBoxStyle(aspect ?? DEFAULT_ASPECT)}
           >
             {hasVideo ? (
               <video
@@ -164,7 +226,7 @@ export default function ReviewScreen({ review, videoUrl, footer, banner }: Revie
 
             <button
               type="button"
-              onClick={toggle}
+              onClick={togglePlay}
               aria-label={playing ? "Pause" : "Play"}
               className="absolute inset-0 flex items-center justify-center"
             >
@@ -204,11 +266,6 @@ export default function ReviewScreen({ review, videoUrl, footer, banner }: Revie
               </div>
             </div>
 
-            {!hasVideo && (
-              <span className="pointer-events-none absolute bottom-2 right-3 text-[10px] font-semibold uppercase tracking-[0.18em] text-white/35">
-                Virtual replay
-              </span>
-            )}
           </div>
         </div>
 
@@ -217,24 +274,37 @@ export default function ReviewScreen({ review, videoUrl, footer, banner }: Revie
           duration={duration}
           currentTime={currentTime}
           currentIndex={currentIndex}
-          onSeek={seek}
+          onSeek={(t) => {
+            cancelPendingWatch();
+            seek(t);
+          }}
           onSelect={selectMove}
         />
 
         <div className="flex items-center gap-3">
           <button
             type="button"
-            onClick={toggle}
+            onClick={togglePlay}
             aria-label={playing ? "Pause" : "Play"}
-            className="flex h-12 w-12 items-center justify-center rounded-full bg-brand text-white shadow-[0_6px_20px_rgb(252_76_2/0.35)] transition active:scale-95"
+            className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-brand text-white shadow-[0_6px_20px_rgb(252_76_2/0.35)] transition active:scale-95"
           >
             {playing ? <PauseIcon className="h-5 w-5" /> : <PlayIcon className="ml-0.5 h-5 w-5" />}
           </button>
-          <p className="font-mono text-sm tabular-nums">
-            <span className="text-ink">{formatTime(currentTime)}</span>
-            <span className="text-faint"> / {formatTime(duration)}</span>
-          </p>
-          <div className="ml-auto flex gap-2">
+          <div className="leading-none">
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-muted">Send</p>
+            <p className="mt-1 text-xl font-bold tabular-nums">
+              {sendChance}
+              <span className="text-sm text-muted">%</span>
+            </p>
+          </div>
+          <div className="leading-none">
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-muted">Time</p>
+            <p className="mt-1.5 font-mono text-sm tabular-nums">
+              <span className="text-ink">{formatTime(currentTime)}</span>
+              <span className="text-muted"> / {formatTime(duration)}</span>
+            </p>
+          </div>
+          <div className="ml-auto flex shrink-0 gap-2">
             <button
               type="button"
               onClick={stepPrev}
@@ -256,11 +326,28 @@ export default function ReviewScreen({ review, videoUrl, footer, banner }: Revie
         </div>
       </div>
 
+      <CoachPanel move={coachIndex >= 0 ? moves[coachIndex] : null} index={coachIndex} total={moves.length} />
+
+      {review.fallback && (
+        <div className="rounded-2xl bg-inaccuracy/10 px-4 py-3 text-sm text-inaccuracy">
+          We couldn&apos;t analyse that video, so this is a sample review, not your climb.
+        </div>
+      )}
+
+      {banner}
+
       <SummaryCard review={review} counts={counts} />
 
       {crux && <CruxCard crux={crux} onWatch={watchCrux} />}
 
-      <MoveList moves={moves} currentIndex={currentIndex} expanded={expanded} playing={playing} onRowTap={tapRow} />
+      <MoveList
+        moves={moves}
+        currentIndex={currentIndex}
+        expanded={expanded}
+        playing={playing}
+        onRowTap={tapRow}
+        onWatch={watchMove}
+      />
 
       {footer}
     </div>

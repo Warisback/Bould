@@ -5,6 +5,11 @@ import { RATING_META } from "@/lib/ratings";
 import type { Move } from "@/lib/types";
 import { formatTime } from "./format";
 
+/** how far a tap may land from a dot and still pick it */
+const SNAP_PX = 22;
+/** movement that turns a tap into a scrub */
+const DRAG_PX = 6;
+
 const Dots = memo(function Dots({
   moves,
   duration,
@@ -22,13 +27,15 @@ const Dots = memo(function Dots({
         const meta = RATING_META[m.rating];
         const active = i === currentIndex;
         return (
+          // Touch goes to the track, which snaps a tap to the nearest dot (dots can
+          // sit closer together than a finger). The buttons stay for keyboard use.
           <button
             key={i}
             type="button"
             data-dot
             onClick={() => onSelect(i)}
             aria-label={`Move ${i + 1} at ${formatTime(m.t)}: ${meta.label}`}
-            className="absolute top-1/2 flex h-7 w-7 -translate-x-1/2 -translate-y-1/2 items-center justify-center"
+            className="pointer-events-none absolute top-1/2 flex h-7 w-7 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full focus-visible:outline-2 focus-visible:outline-brand"
             style={{ left: `${(Math.min(m.t, duration) / duration) * 100}%`, zIndex: active ? 2 : 1 }}
           >
             <span
@@ -60,7 +67,8 @@ export default function Timeline({
   onSelect: (index: number) => void;
 }) {
   const trackRef = useRef<HTMLDivElement>(null);
-  const scrubbing = useRef(false);
+  /** the gesture in progress: where it started, and whether it has become a drag */
+  const gesture = useRef<{ x: number; dragging: boolean } | null>(null);
   const progress = duration > 0 ? Math.min(1, currentTime / duration) : 0;
 
   const timeFromPointer = useCallback(
@@ -73,25 +81,55 @@ export default function Timeline({
     [duration],
   );
 
+  /** Index of the move dot nearest to clientX, if one is within a fingertip. */
+  const dotNear = useCallback(
+    (clientX: number) => {
+      const el = trackRef.current;
+      if (!el || duration <= 0) return -1;
+      const rect = el.getBoundingClientRect();
+      let best = -1;
+      let bestDist = SNAP_PX;
+      moves.forEach((m, i) => {
+        const x = rect.left + (Math.min(m.t, duration) / duration) * rect.width;
+        const d = Math.abs(x - clientX);
+        if (d <= bestDist) {
+          best = i;
+          bestDist = d;
+        }
+      });
+      return best;
+    },
+    [moves, duration],
+  );
+
+  const endGesture = () => {
+    gesture.current = null;
+  };
+
   return (
     <div
-      className="relative h-8 touch-none select-none px-3"
+      className="relative h-11 touch-none select-none px-3"
       onPointerDown={(e) => {
-        // Dots handle their own taps (seek + select).
-        if ((e.target as HTMLElement).closest("[data-dot]")) return;
-        scrubbing.current = true;
+        gesture.current = { x: e.clientX, dragging: false };
         e.currentTarget.setPointerCapture(e.pointerId);
-        onSeek(timeFromPointer(e.clientX));
       }}
       onPointerMove={(e) => {
-        if (scrubbing.current) onSeek(timeFromPointer(e.clientX));
+        const g = gesture.current;
+        if (!g) return;
+        if (!g.dragging && Math.abs(e.clientX - g.x) < DRAG_PX) return;
+        g.dragging = true;
+        onSeek(timeFromPointer(e.clientX));
       }}
-      onPointerUp={() => {
-        scrubbing.current = false;
+      onPointerUp={(e) => {
+        const g = gesture.current;
+        endGesture();
+        if (!g || g.dragging) return;
+        // A tap: land on the nearest move if there is one close by, else scrub there.
+        const i = dotNear(e.clientX);
+        if (i >= 0) onSelect(i);
+        else onSeek(timeFromPointer(e.clientX));
       }}
-      onPointerCancel={() => {
-        scrubbing.current = false;
-      }}
+      onPointerCancel={endGesture}
     >
       <div ref={trackRef} className="relative h-full">
         <div className="absolute inset-x-0 top-1/2 h-1 -translate-y-1/2 rounded-full bg-surface-2" />

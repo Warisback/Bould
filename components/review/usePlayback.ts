@@ -19,7 +19,7 @@ export interface Playback {
     onDurationChange: (e: SyntheticEvent<HTMLVideoElement>) => void;
     onPlay: () => void;
     onPause: () => void;
-    onEnded: () => void;
+    onEnded: (e: SyntheticEvent<HTMLVideoElement>) => void;
     onTimeUpdate: (e: SyntheticEvent<HTMLVideoElement>) => void;
   };
 }
@@ -32,6 +32,8 @@ interface Options {
 }
 
 const END_EPSILON = 0.05;
+/** longest step the virtual clock takes in one frame */
+const MAX_STEP_MS = 100;
 
 /**
  * One playback model for both a real video and the virtual stand-in, so the
@@ -39,30 +41,36 @@ const END_EPSILON = 0.05;
  */
 export function usePlayback({ hasVideo, fallbackDuration }: Options): Playback {
   const videoRef = useRef<HTMLVideoElement | null>(null);
+  /** the element's own duration, once it reports a finite one */
   const [videoDuration, setVideoDuration] = useState<number | null>(null);
+  /** furthest point played so far, for videos whose duration is Infinity/NaN (MediaRecorder WebM) */
+  const [seenEnd, setSeenEnd] = useState(0);
   const [aspect, setAspect] = useState<number | null>(null);
   const [currentTime, setCurrentTime] = useState(0);
   const [playing, setPlaying] = useState(false);
 
-  const duration = hasVideo && videoDuration ? videoDuration : fallbackDuration;
+  const duration = hasVideo ? (videoDuration ?? Math.max(fallbackDuration, seenEnd)) : fallbackDuration;
 
   // Mirrors for use inside callbacks and animation frames.
   const timeRef = useRef(0);
   const durationRef = useRef(duration);
-  /** virtual clock anchor: at performance time `perf` the clock read `t` */
-  const anchorRef = useRef({ perf: 0, t: 0 });
 
   useEffect(() => {
     durationRef.current = duration;
   }, [duration]);
 
-  // Virtual clock.
+  // Virtual clock. It adds up clamped per-frame steps rather than measuring
+  // from a fixed start, so a locked phone or a trip to another app (which
+  // pauses requestAnimationFrame) resumes where it left off instead of
+  // jumping to the end.
   useEffect(() => {
     if (hasVideo || !playing) return;
     let raf = 0;
+    let last = performance.now();
     const tick = (now: number) => {
-      const { perf, t } = anchorRef.current;
-      const next = t + Math.max(0, now - perf) / 1000;
+      const step = Math.min(Math.max(0, now - last), MAX_STEP_MS) / 1000;
+      last = Math.max(last, now);
+      const next = timeRef.current + step;
       const end = durationRef.current;
       if (next >= end) {
         timeRef.current = end;
@@ -99,7 +107,6 @@ export function usePlayback({ hasVideo, fallbackDuration }: Options): Playback {
     (t: number) => {
       const clamped = Math.min(Math.max(0, t), durationRef.current);
       timeRef.current = clamped;
-      anchorRef.current = { perf: performance.now(), t: clamped };
       setCurrentTime(clamped);
       const v = videoRef.current;
       if (hasVideo && v) v.currentTime = clamped;
@@ -108,14 +115,16 @@ export function usePlayback({ hasVideo, fallbackDuration }: Options): Playback {
   );
 
   const play = useCallback(() => {
-    if (timeRef.current >= durationRef.current - END_EPSILON) seek(0);
     if (hasVideo) {
       const v = videoRef.current;
       if (!v) return;
+      // Rewind only when the element itself has finished: our duration can be
+      // a stand-in (no metadata yet, or an Infinity-duration WebM).
+      if (v.ended) seek(0);
       // `playing` follows the element's own play/pause events.
       v.play().catch(() => setPlaying(false));
     } else {
-      anchorRef.current = { perf: performance.now(), t: timeRef.current };
+      if (timeRef.current >= durationRef.current - END_EPSILON) seek(0);
       setPlaying(true);
     }
   }, [hasVideo, seek]);
@@ -131,8 +140,19 @@ export function usePlayback({ hasVideo, fallbackDuration }: Options): Playback {
   }, [playing, pause, play]);
 
   const applyMeta = useCallback((v: HTMLVideoElement) => {
-    if (Number.isFinite(v.duration) && v.duration > 0) setVideoDuration(v.duration);
+    if (Number.isFinite(v.duration) && v.duration > 0) {
+      setVideoDuration(v.duration);
+    } else if (v.seekable.length > 0) {
+      // No duration in the header: the seekable range is the next best thing.
+      const end = v.seekable.end(v.seekable.length - 1);
+      if (Number.isFinite(end) && end > 0) setSeenEnd((prev) => Math.max(prev, end));
+    }
     if (v.videoWidth > 0 && v.videoHeight > 0) setAspect(v.videoWidth / v.videoHeight);
+  }, []);
+
+  /** Without a finite duration, stretch our stand-in so the played part can always be reached. */
+  const noteProgress = useCallback((v: HTMLVideoElement) => {
+    if (!Number.isFinite(v.duration) && v.currentTime > 0) setSeenEnd((prev) => Math.max(prev, v.currentTime));
   }, []);
 
   const readMeta = useCallback(
@@ -149,13 +169,26 @@ export function usePlayback({ hasVideo, fallbackDuration }: Options): Playback {
     return () => cancelAnimationFrame(raf);
   }, [hasVideo, applyMeta]);
 
-  const onTimeUpdate = useCallback((e: SyntheticEvent<HTMLVideoElement>) => {
-    timeRef.current = e.currentTarget.currentTime;
-    setCurrentTime(e.currentTarget.currentTime);
-  }, []);
+  const onTimeUpdate = useCallback(
+    (e: SyntheticEvent<HTMLVideoElement>) => {
+      const v = e.currentTarget;
+      timeRef.current = v.currentTime;
+      setCurrentTime(v.currentTime);
+      noteProgress(v);
+    },
+    [noteProgress],
+  );
 
   const onPlay = useCallback(() => setPlaying(true), []);
-  const onStop = useCallback(() => setPlaying(false), []);
+  const onPause = useCallback(() => setPlaying(false), []);
+  const onEnded = useCallback(
+    (e: SyntheticEvent<HTMLVideoElement>) => {
+      setPlaying(false);
+      applyMeta(e.currentTarget);
+      noteProgress(e.currentTarget);
+    },
+    [applyMeta, noteProgress],
+  );
 
   return {
     currentTime,
@@ -171,8 +204,8 @@ export function usePlayback({ hasVideo, fallbackDuration }: Options): Playback {
       onLoadedMetadata: readMeta,
       onDurationChange: readMeta,
       onPlay,
-      onPause: onStop,
-      onEnded: onStop,
+      onPause,
+      onEnded,
       onTimeUpdate,
     },
   };

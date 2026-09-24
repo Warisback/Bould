@@ -33,7 +33,8 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full bg-bg text-ink">
-        <main className="mx-auto w-full max-w-md pb-nav">{children}</main>
+        {/* viewportFit "cover" + a translucent status bar: keep content out from under the notch. */}
+        <main className="mx-auto w-full max-w-md pt-[env(safe-area-inset-top)] pb-nav">{children}</main>
         <BottomNav />
       </body>
     </html>
