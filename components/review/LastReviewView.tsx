@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import SaveToProfile from "@/components/save/SaveToProfile";
 import { useLastReview } from "@/lib/useLastReview";
 import PageHeader from "./PageHeader";
 import ReviewScreen from "./ReviewScreen";
@@ -53,6 +54,7 @@ export default function LastReviewView() {
   return (
     <ReviewScreen
       review={last.review}
+      footer={<SaveToProfile review={last.review} defaultGrade={last.source === "sample" ? 4 : undefined} />}
       banner={
         <div className="rounded-2xl bg-surface px-4 py-3 text-sm text-muted">
           {last.source === "sample" ? (

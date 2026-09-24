@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import ReviewScreen from "@/components/review/ReviewScreen";
 import RememberReview from "@/components/review/RememberReview";
+import SaveToProfile from "@/components/save/SaveToProfile";
 import type { Review } from "@/lib/types";
 import sample from "@/public/sample.json";
 
@@ -16,6 +17,7 @@ export default function SampleReviewPage() {
       <RememberReview review={review} source="sample" />
       <ReviewScreen
         review={review}
+        footer={<SaveToProfile review={review} defaultGrade={4} defaultType="project" />}
         banner={
           <div className="flex items-center gap-2.5 rounded-2xl bg-surface px-4 py-3 text-sm text-muted">
             <svg viewBox="0 0 24 24" className="h-4 w-4 shrink-0 text-brand" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" aria-hidden>

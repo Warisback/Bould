@@ -1,8 +1,21 @@
-export default function GymPage() {
-  return (
-    <div className="px-4 pt-12">
-      <h1 className="text-2xl font-bold">Aldgate leaderboard</h1>
-      <p className="mt-2 text-muted">Coming soon.</p>
-    </div>
-  );
+import type { Metadata } from "next";
+import { notFound } from "next/navigation";
+import Leaderboard from "@/components/leaderboard/Leaderboard";
+import { isLeaderboardTab } from "@/lib/leaderboard";
+
+export const metadata: Metadata = {
+  title: "Aldgate leaderboard · Beta Review",
+};
+
+export default async function GymPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ gym: string }>;
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+}) {
+  const { gym } = await params;
+  if (gym !== "aldgate") notFound();
+  const { tab } = await searchParams;
+  return <Leaderboard gym="aldgate" initialTab={isLeaderboardTab(tab) ? tab : "points"} />;
 }

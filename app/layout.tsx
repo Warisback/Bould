@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import BottomNav from "@/components/BottomNav";
+import JoinGate from "@/components/JoinGate";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -35,6 +36,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       <body className="min-h-full bg-bg text-ink">
         <main className="mx-auto w-full max-w-md pb-nav">{children}</main>
         <BottomNav />
+        <JoinGate />
       </body>
     </html>
   );

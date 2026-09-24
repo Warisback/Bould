@@ -49,6 +49,8 @@ export interface User {
   climbs: number;
   sends: number;
   avg_accuracy: number;
+  /** grows with every saved climb, never goes down */
+  points: number;
   created_at: number;
 }
 
@@ -62,6 +64,8 @@ export interface Climb {
   sent: boolean;
   accuracy: number;
   rating_change: number;
+  /** points this climb added to the user's total */
+  points_earned?: number;
   review: Review;
   created_at: number;
 }
@@ -73,13 +77,16 @@ export interface Frame {
   data: string;
 }
 
-export type LeaderboardTab = "flash" | "project" | "week";
+export type LeaderboardTab = "points" | "flash" | "project" | "week";
 
 export interface LeaderboardRow {
   rank: number;
   id: string;
   name: string;
   value: number;
+  /** extra context for the row's subtitle */
+  climbs?: number;
+  sends?: number;
 }
 
 export interface LeaderboardResponse {
@@ -87,5 +94,7 @@ export interface LeaderboardResponse {
   rows: LeaderboardRow[];
   /** the requesting user's row when they are outside the top 20 */
   me: LeaderboardRow | null;
+  /** climbers on this board */
+  total?: number;
   updated_at: number;
 }
