@@ -34,6 +34,8 @@ export interface Review {
   moves: Move[];
   /** true when Gemini failed and this is the canned sample */
   fallback?: boolean;
+  /** why the sample was returned: "no_key" | "bad_input" | "busy" | "error" (never secret) */
+  fallback_reason?: string;
 }
 
 export type GymId = "aldgate";
