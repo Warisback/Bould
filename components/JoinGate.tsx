@@ -5,7 +5,7 @@ import { useEffect } from "react";
 import { getUserId } from "@/lib/storage";
 
 /** Pages anyone can open without joining a gym first. */
-const OPEN_PATHS = ["/join", "/review/sample", "/why", "/api"];
+const OPEN_PATHS = ["/join", "/review/sample", "/why", "/launch", "/api"];
 
 function isOpen(path: string) {
   return OPEN_PATHS.some((p) => path === p || path.startsWith(`${p}/`));

@@ -27,6 +27,9 @@ export default function BottomNav() {
   const onBoard = pathname.startsWith("/gym");
   const onProfile = pathname.startsWith("/profile") || pathname.startsWith("/why");
 
+  // The launch film is full-screen.
+  if (pathname.startsWith("/launch")) return null;
+
   const tab = (active: boolean) =>
     `flex flex-1 flex-col items-center gap-1 pt-3 text-[11px] font-medium ${active ? "text-brand" : "text-muted"}`;
 
