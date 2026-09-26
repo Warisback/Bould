@@ -15,7 +15,7 @@ export default function Home() {
       <p className="text-sm font-extrabold tracking-[0.22em] text-brand">BETA REVIEW</p>
 
       <h1 className="mt-5 text-[38px] font-extrabold leading-[1.05] tracking-tight">
-        Your climb, reviewed like a chess game.
+        Your climb, reviewed move by move.
       </h1>
       <p className="mt-4 text-[17px] leading-relaxed text-muted">
         Every move rated, the crux found, and exactly what to try on your next attempt.
